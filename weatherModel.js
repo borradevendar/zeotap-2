@@ -1,15 +1,16 @@
 const mongoose = require('mongoose');
 
-const weatherSchema = new mongoose.Schema({
+// Schema for daily weather summary
+const dailyWeatherSchema = new mongoose.Schema({
   city: String,
   date: Date,
   avgTemp: Number,
   maxTemp: Number,
   minTemp: Number,
-  dominantCondition: String,
-  alerts: [String],
+  dominantCondition: String, // Dominant weather condition
+  alerts: [String], // Store any alerts
 });
 
-const Weather = mongoose.model('Weather', weatherSchema);
+const DailyWeather = mongoose.model('DailyWeather', dailyWeatherSchema);
 
-module.exports = Weather;
+module.exports = DailyWeather;
