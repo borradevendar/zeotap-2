@@ -33,7 +33,7 @@ const DailyWeather = mongoose.model('DailyWeather', dailyWeatherSchema);
 const apiKey = process.env.OWM_API_KEY;
 const cities = ['Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Kolkata', 'Hyderabad'];
 
-// Helper function to fetch weather data
+// Helper function to fetch weather data and store summaries
 const fetchWeatherData = async () => {
   try {
     for (const city of cities) {
@@ -43,15 +43,15 @@ const fetchWeatherData = async () => {
       const dailyData = response.data.list;
       const date = new Date(dailyData[0].dt * 1000).toDateString(); // Get the date from the data
 
-      // Rollup weather data
+      // Rollup weather data for the day
       let totalTemp = 0, maxTemp = -Infinity, minTemp = Infinity, conditionCount = {};
       dailyData.forEach((weather) => {
-        const temp = weather.main.temp; // Use current temp for aggregation
+        const temp = weather.main.temp;
         totalTemp += temp;
         maxTemp = Math.max(maxTemp, weather.main.temp_max);
         minTemp = Math.min(minTemp, weather.main.temp_min);
 
-        // Count dominant weather condition
+        // Count occurrences of weather conditions (e.g., Rain, Clear)
         const condition = weather.weather[0].main;
         if (!conditionCount[condition]) {
           conditionCount[condition] = 0;
@@ -59,15 +59,15 @@ const fetchWeatherData = async () => {
         conditionCount[condition]++;
       });
 
-      // Determine dominant condition
+      // Determine the dominant weather condition
       const dominantCondition = Object.keys(conditionCount).reduce((a, b) =>
         conditionCount[a] > conditionCount[b] ? a : b
       );
 
-      // Calculate the average temperature
+      // Calculate the average temperature for the day
       const avgTemp = totalTemp / dailyData.length;
 
-      // Save the rolled-up data to the database
+      // Store the rolled-up daily summary in the database
       const newDailyWeather = new DailyWeather({
         city,
         date,
@@ -75,18 +75,31 @@ const fetchWeatherData = async () => {
         maxTemp,
         minTemp,
         dominantCondition,
-        alerts: [], // Alerts will be added in another step
+        alerts: [], // Alerts will be added separately
       });
 
-      await newDailyWeather.save();
-      console.log(`Weather data for ${city} on ${date} saved.`);
+      await newDailyWeather.save()
+      .then(() => console.log(`Weather data for ${city} on ${date} saved with dominant condition: ${dominantCondition}`))
+  .catch((err) => console.error('Error saving weather data:', err));
+      console.log(`Weather data for ${city} on ${date} saved with dominant condition: ${dominantCondition}`);
     }
   } catch (error) {
     console.error("Error fetching weather data:", error);
   }
 };
 
-// New endpoint to retrieve weather data
+// Endpoint to manually trigger weather data fetching and storage
+app.get('/fetch-weather', async (req, res) => {
+  try {
+    await fetchWeatherData();
+    res.status(200).send("Weather data fetched and stored successfully");
+  } catch (error) {
+    console.error("Error fetching weather data:", error);
+    res.status(500).send("Failed to fetch and store weather data");
+  }
+});
+
+// Endpoint to retrieve stored weather data
 app.get('/get-weather', async (req, res) => {
   try {
     const weatherData = await DailyWeather.find().sort({ date: -1 }).limit(100); // Get recent data
@@ -94,17 +107,6 @@ app.get('/get-weather', async (req, res) => {
   } catch (error) {
     console.error("Error retrieving weather data:", error);
     res.status(500).send("Failed to retrieve weather data");
-  }
-});
-
-// Endpoint to manually trigger weather data fetching
-app.get('/fetch-weather', async (req, res) => {
-  try {
-    await fetchWeatherData();
-    res.status(200).send("Weather data fetched successfully");
-  } catch (error) {
-    console.error("Error fetching weather data:", error);
-    res.status(500).send("Failed to fetch weather data");
   }
 });
 

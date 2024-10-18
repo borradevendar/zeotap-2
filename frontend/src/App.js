@@ -10,10 +10,10 @@ function App() {
     const fetchWeatherData = async () => {
       try {
         setLoading(true); // Set loading to true before making the request
-        const response = await axios.get('http://localhost:5000/get-weather'); // Update to new endpoint
+        const response = await axios.get('http://localhost:5000/get-weather'); // Request stored weather data
         console.log('Weather data from API:', response.data); // Log the API response
   
-        const data = response.data; // Assuming API returns an array of weather data
+        const data = response.data;
         if (Array.isArray(data)) {
           setWeatherData(data); // Set weatherData if it's an array
         } else {
@@ -30,6 +30,7 @@ function App() {
   
     fetchWeatherData();
   }, []);
+  
   
 
   // Debug log for weatherData to confirm it's being updated
